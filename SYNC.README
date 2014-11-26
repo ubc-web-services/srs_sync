@@ -1,0 +1,67 @@
+
+Nov 20, 2014
+Dave Kennedy
+
+The sync folder contains the automation for the synch between SRS Oracle DB and Drupal MySQL DB.
+
+
+++++++++++++
++ Contents +
+++++++++++++
+
+dbsync_get_schema.php
+
+This file will fetch the current Oracle Schema and write the MySQL equivalent as an array into a file. 
+Run this script if the Oracle Schema has changed, and use the array to re-create the $ORA_TABLES array in
+the support_lite.php file.  This will allow the sync to run more efficiently at the cost of having to do this
+manual step from time to time.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+dbsync_lite2.php
+
+This file is the main Oracle to MySQL script.  It is invoked in srs_sync_ora.php.  It fetches any new rows in the
+Oracle tables that we need to sync and copies them into the MySQL schema.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+dbsync_lite.php
+
+This file is the previous version of the Oracle to MySQL script.  It fetches any new rows in the Oracle tables that we need to sync and copies them into the MySQL schema.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+dbsync_orig.php
+
+This file is the equivalent of running dbsync_get_schema.php and dbsync_lite.php all in one script.  We are NOT 
+running this script right now because it used too much resource on the Oracle server.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+srs_sync_dr.php
+
+This script invokes the drush call that runs the MySQL to Drupal synch.  Currently runs this portion of the synch
+about three times per minute.  srs_sync_dr.php is invoked by the server crontab every minute.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+srs_sync_ora.php
+
+This script invokes the dbsync_lite.php script.  Currently runs this portion of the synch about three times per minute.
+srs_sync_ora.php is invoked by the server crontab every minute.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+support_lite.php
+
+This file contains data required by the dbsync_lite.php script.  Modify this script as per the environment you are running
+the synch on. 
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+support_orig.php
+
+This file contains data required by the dbsync_orig.php script.  Modify this script as per the environment you are running
+the synch on.
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
