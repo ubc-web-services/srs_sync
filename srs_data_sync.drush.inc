@@ -20,7 +20,25 @@ function srs_data_sync_alertError($audit_row, $type, $msg=false) {
 	$msg = 'Failed running AUDIT_ROW: '.$audit_row.' :: TABLE: '.$type;
 	if($msg) $msg .= ' :: MSG: '.$msg;
 
-	mail('{your@email.address}', 'Drush Synch Did Not Complete', $msg);
+
+	$i = file_get_contents(ALERT_FILE);
+  $errs = explode("/", $i);	
+	$hour = date('G');
+	
+	if(intval($errs[0]) == intval($hour)) {
+	  $errnum = $errs[1];
+	  if(($errnum > 10) && ($errnum <= 20)) {
+	    mail('{your@email.address}', 'Drush Synch Did Not Complete', $msg);
+	  }
+	  
+	  $errnum = $errnum + 1;
+		$log = $hour.'/'.$errnum;
+		file_put_contents(ALERT_FILE, $log);
+	}
+	else {
+		$log = $hour.'/1';
+		file_put_contents(ALERT_FILE, $log);
+	}
 }
 
 function srs_data_sync_logOrEcho($msg) {
