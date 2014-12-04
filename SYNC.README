@@ -65,3 +65,5 @@ This file contains data required by the dbsync_orig.php script.  Modify this scr
 the synch on.
 
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error_alert
