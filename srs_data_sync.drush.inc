@@ -7,7 +7,7 @@ define('PROCESS_REQUISITES', TRUE);
 define('PROCESS_FEES', TRUE);
 define('LIMIT_RESULTS', ''); //leave preceding space :: ' LIMIT X'
 define('ECHO_ERRORS', FALSE);
-define('ALERT_FILE', '{path/to/my/alert/file}');
+define('ALERT_FILE', '{path/to/alert/file}');
 
 function srs_data_sync_drush_command() {
   $items['srs_data_sync-import'] = array(
@@ -28,7 +28,7 @@ function srs_data_sync_alertError($audit_row, $type, $msg=false) {
 	if(intval($errs[0]) == intval($hour)) {
 	  $errnum = $errs[1];
 	  if(($errnum > 10) && ($errnum <= 20)) {
-	    mail('{your@email.address}', 'Drush Synch Did Not Complete', $msg);
+	    mail('{your@email.addr}', 'Drush DEV Synch Did Not Complete', $msg);
 	  }
 	  
 	  $errnum = $errnum + 1;
@@ -78,7 +78,7 @@ function drush_srs_data_sync_import() {
 	    $xact->rollback();
 	    srs_data_sync_logOrEcho('Rolled back after requisites');
 	    return;
-		}    
+		}
   }
   if(PROCESS_FEES) {
   	if(!srs_data_sync_importFees($xact)) {
@@ -231,7 +231,16 @@ function srs_data_sync_importFees($xact) {
 
 
 
-function _srs_data_sync_auditFees(&$section_node, &$conn) {
+function _srs_data_sync_auditFees(&$section_node, &$conn=false) {
+
+	if(!$conn) {
+    $conn = srs_data_sync_getSRSConnector();
+	  if(!$conn) {
+		  srs_data_sync_logOrEcho('Error acquiring SRS Connector');
+		  return false;
+		}  
+  }
+
   $qry = "SELECT * FROM SALEABLE_ITEM SI INNER JOIN ITEM I ON SI.ITEM_ID = I.ITEM_ID INNER JOIN SECTION_COURSE SC ON I.SECTION_COURSE_ID = SC.SECTION_COURSE_ID INNER JOIN SECTION S ON SC.SECTION_ID = S.SECTION_ID INNER JOIN COURSE C ON SC.COURSE_ID = C.COURSE_ID WHERE S.SECTION_ID = ".$section_node->field_srs_id['und'][0]['value']." ORDER BY SI.DEFAULT_FLAG DESC, SI.WEB_ENABLED DESC";
   $query = oci_parse($conn, $qry);
   
@@ -270,25 +279,24 @@ function _srs_data_sync_auditFees(&$section_node, &$conn) {
       $fc_wrapper->field_fee_is_default->set($row['DEFAULT_FLAG']);
       $fc_wrapper->field_fee_coupon_enabled->set('N');
 
-		  if($row['TAXES_INCLUDED'] == 'N') {
+		  if($row['TAXES_INCLUDED'] == 'Y') {
+		    $fc_wrapper->field_fee_taxes_included->set('Y');
+		  }
+		  else {
 		    $fc_wrapper->field_fee_taxes_included->set('N');
+		  }
 	
 			$taxqry = "SELECT TA.TAX_ID FROM SALEABLE_ITEM SI INNER JOIN TAX_ASN TA ON SI.ITEM_ID = TA.ITEM_ID WHERE SI.SALEABLE_ITEM_ID = ".$row['SALEABLE_ITEM_ID'];
 			$taxquery = oci_parse($conn, $taxqry);
-	  	  	
-	  	  	oci_execute($taxquery);
-	  	  	while($taxrow = oci_fetch_array($taxquery, OCI_ASSOC+OCI_RETURN_NULLS)) {
-	          if($taxrow['TAX_ID'] == '1') {
-	            $fc_wrapper->field_fee_tax_gst->set(1);
-	          }
-	          elseif($taxrow['TAX_ID'] == '2') {
-	            $fc_wrapper->field_fee_tax_pst->set(1);
-	          }
-	  	  	}
-		  }
-		  else {
-		    $fc_wrapper->field_fee_taxes_included->set('Y');
-		  }
+	  	oci_execute($taxquery);
+	  	while($taxrow = oci_fetch_array($taxquery, OCI_ASSOC+OCI_RETURN_NULLS)) {
+        if($taxrow['TAX_ID'] == '1') {
+          $fc_wrapper->field_fee_tax_gst->set(1);
+        }
+        elseif($taxrow['TAX_ID'] == '2') {
+          $fc_wrapper->field_fee_tax_pst->set(1);
+        }
+	  	}
 			  
 		  if($row['EFFECTIVE_START_DATE']) {
 		    $fc_start = intval(strtotime($row['EFFECTIVE_START_DATE']));
@@ -414,25 +422,24 @@ function srs_data_sync_fetchAttachedFees($child_ids, &$host_node, &$attach_sort_
 		    }
 		  }
 	
-		  if($row['TAXES_INCLUDED'] == 'N') {
+		  if($row['TAXES_INCLUDED'] == 'Y') {
+		    $fc_wrapper->field_fee_taxes_included->set('Y');
+		  }
+		  else {
 		    $fc_wrapper->field_fee_taxes_included->set('N');
+		  }
 	
 			$taxqry = "SELECT TA.TAX_ID FROM SALEABLE_ITEM SI INNER JOIN TAX_ASN TA ON SI.ITEM_ID = TA.ITEM_ID WHERE SI.SALEABLE_ITEM_ID = ".$row['SALEABLE_ITEM_ID'];
 			$taxquery = oci_parse($conn, $taxqry);
-	  	  	
-	  	  	oci_execute($taxquery);
-	  	  	while($taxrow = oci_fetch_array($taxquery, OCI_ASSOC+OCI_RETURN_NULLS)) {
-	          if($taxrow['TAX_ID'] == '1') {
-	            $fc_wrapper->field_fee_tax_gst->set(1);
-	          }
-	          elseif($taxrow['TAX_ID'] == '2') {
-	            $fc_wrapper->field_fee_tax_pst->set(1);
-	          }
-	  	  	}
-		  }
-		  else {
-		    $fc_wrapper->field_fee_taxes_included->set('Y');
-		  }
+	  	oci_execute($taxquery);
+	  	while($taxrow = oci_fetch_array($taxquery, OCI_ASSOC+OCI_RETURN_NULLS)) {
+        if($taxrow['TAX_ID'] == '1') {
+          $fc_wrapper->field_fee_tax_gst->set(1);
+        }
+        elseif($taxrow['TAX_ID'] == '2') {
+          $fc_wrapper->field_fee_tax_pst->set(1);
+        }
+	  	}
 			  
 		  if($row['EFFECTIVE_START_DATE']) {
 		    $fc_start = intval(strtotime($row['EFFECTIVE_START_DATE']));
@@ -451,7 +458,15 @@ function srs_data_sync_fetchAttachedFees($child_ids, &$host_node, &$attach_sort_
   return true;
 }
 
-function _srs_data_sync_auditProdFees(&$product_node, &$conn) {
+function _srs_data_sync_auditProdFees(&$product_node, &$conn=false) {
+ 
+	if(!$conn) {
+    $conn = srs_data_sync_getSRSConnector();
+	  if(!$conn) {
+		  srs_data_sync_logOrEcho('Error acquiring SRS Connector');
+		  return false;
+		}  
+  }
 	  
   $qry = "SELECT * FROM SALEABLE_ITEM SI INNER JOIN ITEM I ON SI.ITEM_ID = I.ITEM_ID INNER JOIN PRODUCT P ON I.PRODUCT_ID = P.PRODUCT_ID WHERE P.PRODUCT_ID = ".$product_node->field_srs_id['und'][0]['value']." ORDER BY SI.DEFAULT_FLAG DESC, SI.WEB_ENABLED DESC";  
   $query = oci_parse($conn, $qry);
@@ -490,25 +505,24 @@ function _srs_data_sync_auditProdFees(&$product_node, &$conn) {
       $fc_wrapper->field_fee_is_default->set($row['DEFAULT_FLAG']);
       $fc_wrapper->field_fee_coupon_enabled->set('N');
 
-		  if($row['TAXES_INCLUDED'] == 'N') {
+		  if($row['TAXES_INCLUDED'] == 'Y') {
+		    $fc_wrapper->field_fee_taxes_included->set('Y');
+		  }
+		  else {
 		    $fc_wrapper->field_fee_taxes_included->set('N');
+		  }
 	
 			$taxqry = "SELECT TA.TAX_ID FROM SALEABLE_ITEM SI INNER JOIN TAX_ASN TA ON SI.ITEM_ID = TA.ITEM_ID WHERE SI.SALEABLE_ITEM_ID = ".$row['SALEABLE_ITEM_ID'];
 			$taxquery = oci_parse($conn, $taxqry);
-	  	  	
-	  	  	oci_execute($taxquery);
-	  	  	while($taxrow = oci_fetch_array($taxquery, OCI_ASSOC+OCI_RETURN_NULLS)) {
-	          if($taxrow['TAX_ID'] == '1') {
-	            $fc_wrapper->field_fee_tax_gst->set(1);
-	          }
-	          elseif($taxrow['TAX_ID'] == '2') {
-	            $fc_wrapper->field_fee_tax_pst->set(1);
-	          }
-	  	  	}
-		  }
-		  else {
-		    $fc_wrapper->field_fee_taxes_included->set('Y');
-		  }
+	  	oci_execute($taxquery);
+	  	while($taxrow = oci_fetch_array($taxquery, OCI_ASSOC+OCI_RETURN_NULLS)) {
+        if($taxrow['TAX_ID'] == '1') {
+          $fc_wrapper->field_fee_tax_gst->set(1);
+        }
+        elseif($taxrow['TAX_ID'] == '2') {
+          $fc_wrapper->field_fee_tax_pst->set(1);
+        }
+	  	}
 			  
 		  if($row['EFFECTIVE_START_DATE']) {
 		    $fc_start = intval(strtotime($row['EFFECTIVE_START_DATE']));
@@ -568,7 +582,6 @@ function _srs_data_sync_auditProdFees(&$product_node, &$conn) {
 		return false;
 	}
 
-
   return true;
 }
 
@@ -608,7 +621,6 @@ function srs_data_sync_importRelationships($xact) {
 				if(is_null(key($entity['node']))) {
 				  if($audrow->AUD_ACTION == 'D') {
 					  srs_data_sync_logOrEcho('target node was deleted prior to running the delete on the node reference');
-					  srs_data_sync_timestampAuditRow($audrow, $audit_table_name);
 				    continue;
 				  } 
 				  else {
@@ -633,7 +645,6 @@ function srs_data_sync_importRelationships($xact) {
 				if(is_null(key($entity['node']))) {
 				  if($audrow->AUD_ACTION == 'D') {
 					  srs_data_sync_logOrEcho('ref node was deleted prior to running the delete on the node reference');
-					  srs_data_sync_timestampAuditRow($audrow, $audit_table_name);
 				    continue;
 				  } 
 				  else {
@@ -892,6 +903,16 @@ function srs_data_sync_nodeUpdate($row, $type, $fields) {
 			try {
 			  srs_data_sync_hlpUpdateSetFieldsByObject($fields, $row, $node);
 			  node_save($node);
+			  
+			  if($type == 'section') {
+			  	$audit_success = _srs_data_sync_auditFees($node);
+			    if(!$audit_success) return false;
+			  }
+			  elseif($type == 'product') {
+			  	$audit_success = _srs_data_sync_auditProdFees($node);
+			    if(!$audit_success) return false;
+			  }
+			  
 			}
 			catch (Exception $e) {
 			  return false;
@@ -960,6 +981,7 @@ function srs_data_sync_importRequisiteRelationships($xact) {
   $audrows = db_query(sprintf("SELECT * FROM %s WHERE drupal_import_time IS NULL".LIMIT_RESULTS." FOR UPDATE;", 'AUD_REQUISITE'));
   
   $courseList = array();
+  $update = false;
 
   foreach($audrows as $audrow) {
 
@@ -987,6 +1009,7 @@ function srs_data_sync_importRequisiteRelationships($xact) {
 				}
 	    	
 	    	srs_data_sync_timestampAuditRow($audrow, 'AUD_REQUISITE');
+	    	$update = true;
 	    	$courseList[] = $audrow->PARENT_SEQUENCE_ID;
 			}
 			catch (Exception $e) {
@@ -998,7 +1021,12 @@ function srs_data_sync_importRequisiteRelationships($xact) {
 		}
 
   }
-  
+
+	if($update) {
+		cache_clear_all('*', 'cache_views', TRUE);
+		cache_clear_all('*', 'cache_views_data', TRUE);
+		srs_data_sync_logOrEcho('Cleared Cache Views');
+	}
 
   return true;
 }
