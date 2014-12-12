@@ -28,7 +28,7 @@ function srs_data_sync_alertError($audit_row, $type, $msg=false) {
 	if(intval($errs[0]) == intval($hour)) {
 	  $errnum = $errs[1];
 	  if(($errnum > 10) && ($errnum <= 20)) {
-	    mail('{your@email.addr}', 'Drush DEV Synch Did Not Complete', $msg);
+	    mail('{your@email.addr}', 'Drush Synch Did Not Complete', $msg);
 	  }
 	  
 	  $errnum = $errnum + 1;
@@ -78,7 +78,7 @@ function drush_srs_data_sync_import() {
 	    $xact->rollback();
 	    srs_data_sync_logOrEcho('Rolled back after requisites');
 	    return;
-		}
+		}    
   }
   if(PROCESS_FEES) {
   	if(!srs_data_sync_importFees($xact)) {
@@ -240,7 +240,7 @@ function _srs_data_sync_auditFees(&$section_node, &$conn=false) {
 		  return false;
 		}  
   }
-
+  
   $qry = "SELECT * FROM SALEABLE_ITEM SI INNER JOIN ITEM I ON SI.ITEM_ID = I.ITEM_ID INNER JOIN SECTION_COURSE SC ON I.SECTION_COURSE_ID = SC.SECTION_COURSE_ID INNER JOIN SECTION S ON SC.SECTION_ID = S.SECTION_ID INNER JOIN COURSE C ON SC.COURSE_ID = C.COURSE_ID WHERE S.SECTION_ID = ".$section_node->field_srs_id['und'][0]['value']." ORDER BY SI.DEFAULT_FLAG DESC, SI.WEB_ENABLED DESC";
   $query = oci_parse($conn, $qry);
   
@@ -440,7 +440,7 @@ function srs_data_sync_fetchAttachedFees($child_ids, &$host_node, &$attach_sort_
           $fc_wrapper->field_fee_tax_pst->set(1);
         }
 	  	}
-			  
+	  				  
 		  if($row['EFFECTIVE_START_DATE']) {
 		    $fc_start = intval(strtotime($row['EFFECTIVE_START_DATE']));
 		    $fc_wrapper->field_fee_start_date->set($fc_start);
@@ -523,7 +523,7 @@ function _srs_data_sync_auditProdFees(&$product_node, &$conn=false) {
           $fc_wrapper->field_fee_tax_pst->set(1);
         }
 	  	}
-			  
+	  				  
 		  if($row['EFFECTIVE_START_DATE']) {
 		    $fc_start = intval(strtotime($row['EFFECTIVE_START_DATE']));
 		    $fc_wrapper->field_fee_start_date->set($fc_start);
@@ -582,6 +582,7 @@ function _srs_data_sync_auditProdFees(&$product_node, &$conn=false) {
 		return false;
 	}
 
+
   return true;
 }
 
@@ -617,10 +618,11 @@ function srs_data_sync_importRelationships($xact) {
 		  	  ->entityCondition('bundle', $rel_array['target'])
 		  	  ->fieldCondition('field_srs_id', 'value', $audrow->$tarId, '=')
 		  	  ->execute();
-			
+
 				if(is_null(key($entity['node']))) {
 				  if($audrow->AUD_ACTION == 'D') {
 					  srs_data_sync_logOrEcho('target node was deleted prior to running the delete on the node reference');
+					  srs_data_sync_timestampAuditRow($audrow, $audit_table_name);
 				    continue;
 				  } 
 				  else {
@@ -645,6 +647,7 @@ function srs_data_sync_importRelationships($xact) {
 				if(is_null(key($entity['node']))) {
 				  if($audrow->AUD_ACTION == 'D') {
 					  srs_data_sync_logOrEcho('ref node was deleted prior to running the delete on the node reference');
+					  srs_data_sync_timestampAuditRow($audrow, $audit_table_name);
 				    continue;
 				  } 
 				  else {
@@ -652,6 +655,7 @@ function srs_data_sync_importRelationships($xact) {
 						return srs_data_sync_rollbackAuditAction($xact, $audrow, $audit_table_name);
 				  }
 				} 
+
 				$refNode = node_load(key($entity['node']));
 				if($refNode == FALSE) {
 				  srs_data_sync_logOrEcho('Could not fetch ref node: '.key($entity['node']));
@@ -730,6 +734,7 @@ function srs_data_sync_relUpdateOrInsert($audrow, $rel_array, $targetNode, $refN
   $relField = $rel_array['field'];
   $_temp = &$targetNode->$relField;
 	$refNid = $refNode->nid;
+
 	$capture = ($rel_array['source_cap'] && $rel_array['rel_cap']);
 
   /* HANDLE EXCEPTIONS */
@@ -780,11 +785,10 @@ function srs_data_sync_relUpdateOrInsert($audrow, $rel_array, $targetNode, $refN
       $_tempCap['und'][0]['value'] = $audrow->$capField;
     }
   }
-  
+
   if($rel_array['name'] == 'INSTRUCTOR_SECTION') {
     srs_data_sync_setInstructorSectionRoles($rel_array, $targetNode, $rolemap);
   }
-  
 	try{
 		node_save($targetNode);
 	}
@@ -912,7 +916,7 @@ function srs_data_sync_nodeUpdate($row, $type, $fields) {
 			  	$audit_success = _srs_data_sync_auditProdFees($node);
 			    if(!$audit_success) return false;
 			  }
-			  
+			  			  
 			}
 			catch (Exception $e) {
 			  return false;
